@@ -8,9 +8,9 @@ def convert_code(base_code, func_code):
 
     gen = CGenerator()
 
-    def find_function(ast, name):
+    def find_first_function(ast):
         for ext in ast.ext:
-            if isinstance(ext, c_ast.FuncDef) and ext.decl.name == name:
+            if isinstance(ext, c_ast.FuncDef):
                 return ext
         return None
 
@@ -85,7 +85,7 @@ def convert_code(base_code, func_code):
     parser = c_parser.CParser()
     ast = parser.parse(base_code + "\n" + func_code)
 
-    func = find_function(ast, "func_us_801BACF4")
+    func = find_first_function(ast)
 
     visitor = LocalDeclVisitor()
     visitor.visit(func)
@@ -162,3 +162,4 @@ def convert_code(base_code, func_code):
     func.body.block_items = sort_decl_blocks(func.body.block_items)
 
     return gen.visit(func)
+
