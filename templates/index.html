@@ -83,8 +83,8 @@
     }
 
     window.addEventListener("load", () => {
-        makeEditor("editor-tab1", "// This is tab 1\n#include <iostream>\nint main() {\n    std::cout << \"Hello, World!\" << std::endl;\n    return 0;\n}");
-        makeEditor("editor-tab2", "// This is tab 2\n#include <iostream>\nint main() {\n    std::cout << \"Tab 2!\" << std::endl;\n    return 0;\n}");
+        makeEditor("editor-tab1", "// Enter the ctx.c here, then switch to source tab");
+        makeEditor("editor-tab2", "// Enter the function code here\n#include <iostream>\nint myfunc(int arg1, char arg2) {\n\tunsigned long myvar;\n\tint velocityX;int velocityY;\n\tint velocityTotal;\n\t\n\tchar* text;\n\tchar* message;\n\n\tvelocityTotal = velocityX + velocityY;\n\tprintf(\"%s\", message);\n}");
         makeEditor("editor-right", "// Output will appear here");
     });
 

@@ -3,6 +3,31 @@
 from pycparser import c_parser, c_ast
 from pycparser.c_generator import CGenerator
 from collections import defaultdict
+import re
+
+COMMENT_RE = re.compile(
+    r"""
+    //.*?$          |   # C++-style // comment
+    /\*.*?\*/           # C-style /* ... */ comment
+    """,
+    re.DOTALL | re.MULTILINE | re.VERBOSE
+)
+
+def remove_comments(text):
+    return re.sub(COMMENT_RE, "", text)
+
+DIRECTIVE_RE = re.compile(
+    r"""
+    ^\s*            # optional leading whitespace
+    \#              # preprocessor #
+    (?:\\\n|.)*?    # content, including escaped newlines
+    (?=\n|$)        # stop at end of line
+    """,
+    re.MULTILINE | re.VERBOSE
+)
+
+def remove_directives(text):
+    return re.sub(DIRECTIVE_RE, "", text)
 
 def convert_code(base_code, func_code):
 
@@ -83,7 +108,7 @@ def convert_code(base_code, func_code):
             self.generic_visit(node)
 
     parser = c_parser.CParser()
-    ast = parser.parse(base_code + "\n" + func_code)
+    ast = parser.parse(remove_directives(remove_comments(base_code + "\n" + func_code)))
 
     func = find_first_function(ast)
 
@@ -162,4 +187,3 @@ def convert_code(base_code, func_code):
     func.body.block_items = sort_decl_blocks(func.body.block_items)
 
     return gen.visit(func)
-
