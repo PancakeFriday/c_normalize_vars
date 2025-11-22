@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <title>Editor Layout</title>
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { darkMode: "class" }
+    </script>
+    <!-- Custom CSS for CodeMirror -->
+    <style>
+    #editor-tab1, #editor-tab2, #editor-right {
+        max-height: 100%;
+    }
+    .cm-editor, .cm-scroller {
+    height: 100%;
+    min-height: 0;      /* Crucial in flex layouts */
+    overflow: auto !important;
+}
+    </style>
+</head>
+<body class="h-screen w-screen bg-gray-900 text-gray-200">
+
+
+
+<div class="grid grid-rows-[1fr_2em] h-screen gap-4 p-4">
+  <div class="grid grid-cols-2 gap-4 h-full overflow-auto">
+    <!-- LEFT COLUMN -->
+    <div class="flex flex-col h-full overflow-auto">
+      <!-- Tabs -->
+      <div class="text-sm font-medium text-center text-gray-400 border-b border-gray-700">
+        <ul class="flex flex-wrap -mb-px">
+          <li class="me-2">
+            <button id="btn-tab1" onclick="switchTab('tab1')" class="inline-block p-4 border-b border-transparent rounded-t-base text-blue-400 border-blue-400">Context</button>
+          </li>
+          <li class="me-2">
+            <button id="btn-tab2" onclick="switchTab('tab2')" class="inline-block p-4 border-b border-transparent rounded-t-base text-gray-400 hover:text-blue-400 hover:border-blue-400 border-transparent">Source Code</button>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Tab Containers -->
+      <div id="tab1" class="flex-1 min-h-0 mt-2 h-full overflow-auto">
+        <div id="editor-tab1" class="h-full border border-gray-700 rounded-md"></div>
+      </div>
+      <div id="tab2" class="hidden flex-1 min-h-0 mt-2 h-full overflow-auto">
+        <div id="editor-tab2" class="h-full border border-gray-700 rounded-md"></div>
+      </div>
+    </div>
+
+    <!-- RIGHT COLUMN -->
+    <div class="h-full border border-gray-700 rounded-md min-h-0 overflow-auto">
+      <div id="editor-right" class="h-full"></div>
+    </div>
+  </div>
+
+  <!-- ROW 2 -->
+  <div class="flex items-center">
+    <button id="convertButton" class="w-full px-4 py-1 bg-gray-700 rounded text-gray-200 hover:bg-gray-600">Normalize variables</button>
+  </div>
+</div>
+
+
+<!-- CodeMirror 6 -->
+<script type="module">
+    // Import CodeMirror 6 and its extensions
+    import { EditorView, basicSetup } from 'https://cdn.jsdelivr.net/npm/codemirror@6.0.0/+esm';
+    import { cpp } from 'https://cdn.jsdelivr.net/npm/@codemirror/lang-cpp@6.0.0/+esm';
+    import { oneDark } from 'https://cdn.jsdelivr.net/npm/@codemirror/theme-one-dark@6.0.0/+esm';
+
+    // Declare editors globally
+    window.editors = {}; // Attach to window to make it globally accessible
+
+    function makeEditor(id, initialDoc="") {
+        const view = new EditorView({
+            doc: initialDoc,
+            extensions: [basicSetup, cpp(), oneDark],
+            parent: document.getElementById(id)
+        });
+        window.editors[id] = view;
+    }
+
+    window.addEventListener("load", () => {
+        makeEditor("editor-tab1", "// This is tab 1\n#include <iostream>\nint main() {\n    std::cout << \"Hello, World!\" << std::endl;\n    return 0;\n}");
+        makeEditor("editor-tab2", "// This is tab 2\n#include <iostream>\nint main() {\n    std::cout << \"Tab 2!\" << std::endl;\n    return 0;\n}");
+        makeEditor("editor-right", "// Output will appear here");
+    });
+
+    window.switchTab = function(name) {
+        const ids = ["tab1", "tab2"];
+        const btns = ["btn-tab1", "btn-tab2"];
+        // Hide all tabs
+        ids.forEach(id => document.getElementById(id).classList.add("hidden"));
+        // Show selected tab
+        document.getElementById(name).classList.remove("hidden");
+        // Update active tab styling
+        btns.forEach((btn, i) => {
+            const tab = "tab" + (i + 1);
+            const el = document.getElementById(btn);
+            if (tab === name) {
+                el.classList.add("text-blue-400", "border-blue-400");
+                el.classList.remove("text-gray-400", "border-transparent");
+            } else {
+                el.classList.add("text-gray-400", "border-transparent");
+                el.classList.remove("text-blue-400", "border-blue-400");
+            }
+        });
+        // Force CodeMirror to refresh size when showing a hidden editor
+        requestAnimationFrame(() => {
+            if (name === "tab1" && window.editors["editor-tab1"]) window.editors["editor-tab1"].requestMeasure();
+            if (name === "tab2" && window.editors["editor-tab2"]) window.editors["editor-tab2"].requestMeasure();
+        });
+    };
+
+    // Add button click handler inside the module script
+    document.getElementById("convertButton").addEventListener("click", async () => {
+        // Determine which tab is active
+        const activeTab = document.querySelector("[id^='tab']:not(.hidden)").id;
+        const baseCode = window.editors['editor-tab1'].state.doc.toString();
+        const sourceCode = window.editors['editor-tab2'].state.doc.toString();
+
+        // Send AJAX request to /convert
+        const response = await fetch("/convert", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                base: baseCode,
+                source: sourceCode,
+            }),
+        });
+
+        const result = await response.json();
+
+        // Update the right column editor with the result
+        window.editors["editor-right"].dispatch({
+            changes: {
+                from: 0,
+                to: window.editors["editor-right"].state.doc.length,
+                insert: result.output,
+            },
+        });
+    });
+</script>
+</body>
+</html>
